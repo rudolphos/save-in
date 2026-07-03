@@ -1,8 +1,8 @@
 let currentTab = null; // global variable
 
-window.init = () => {
+self.init = () => {
   // FIXME
-  window.optionErrors = {
+  self.optionErrors = {
     paths: [],
     filenamePatterns: [],
   };
@@ -53,13 +53,13 @@ window.init = () => {
 
 Menus.addDownloadListener();
 
-window.reset = () => {
+self.reset = () => {
   browser.contextMenus.removeAll().then(() => {
-    window.init();
+    self.init();
   });
 };
 
-window.init();
+self.init();
 
 browser.tabs.onActivated.addListener((info) => {
   browser.tabs.get(info.tabId).then((t) => {

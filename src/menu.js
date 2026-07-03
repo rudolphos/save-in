@@ -228,7 +228,7 @@ const Menus = {
         const { comment, depth, meta, validation, parsedDir } = parsed;
 
         if (!validation.valid) {
-          window.optionErrors.paths.push({
+          self.optionErrors.paths.push({
             message: validation.message,
             error: `${dir}`,
           });
@@ -389,8 +389,8 @@ const Menus = {
           saveIntoPath = ".";
         } else if (info.menuItemId === Menus.IDS.LAST_USED) {
           saveIntoPath = lastUsedPath;
-          comment = window.lastDownloadState.info.comment;
-          menuIndex = window.lastDownloadState.info.menuIndex;
+          comment = self.lastDownloadState.info.comment;
+          menuIndex = self.lastDownloadState.info.menuIndex;
         } else {
           saveIntoPath = menuInfo.parsedDir;
           lastUsedPath = saveIntoPath;
@@ -548,7 +548,7 @@ const Menus = {
           const timeoutInterval = 500; // Prevents notification bugs
 
           tabs.forEach((t, i) => {
-            window.setTimeout(() => {
+            setTimeout(() => {
               requestedDownloadFlag = true; // Notifications.
 
               let url = t.url;
@@ -598,7 +598,7 @@ const Menus = {
 
               // TODO: Store tabs marked for saving and close only on successful save
               if (options.closeTabOnSave) {
-                window.setTimeout(() => {
+                setTimeout(() => {
                   browser.tabs.remove(t.id);
                 }, timeoutInterval);
               }
