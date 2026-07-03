@@ -102,44 +102,39 @@ const Messaging = {
 };
 
 browser.runtime.onMessageExternal.addListener(
-  (request, sender, sendResponse) => {
+  (request, sender) => {
     switch (request.type) {
       case MESSAGE_TYPES.DOWNLOAD:
-        Messaging.handleDownloadMessage(request, sender, sendResponse);
-        break;
+        return Messaging.handleDownloadMessage(request, sender);
       default:
-        // noop
-        break;
+        return Promise.resolve();
     }
   }
 );
 
-browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((request, sender) => {
   switch (request.type) {
     case MESSAGE_TYPES.OPTIONS:
-      sendResponse({
+      return Promise.resolve({
         type: MESSAGE_TYPES.OPTIONS,
         body: options,
       });
-      break;
     case MESSAGE_TYPES.OPTIONS_SCHEMA:
-      sendResponse({
+      return Promise.resolve({
         type: MESSAGE_TYPES.OPTIONS_SCHEMA,
         body: {
           keys: OptionsManagement.OPTION_KEYS,
           types: OptionsManagement.OPTION_TYPES,
         },
       });
-      break;
     case MESSAGE_TYPES.GET_KEYWORDS:
-      sendResponse({
+      return Promise.resolve({
         type: MESSAGE_TYPES.KEYWORD_LIST,
         body: {
           matchers: Object.keys(Router.matcherFunctions),
           variables: Object.keys(Variable.transformers),
         },
       });
-      break;
     case MESSAGE_TYPES.CHECK_ROUTES:
       const lastState =
         (request.body && request.body.state) ||
@@ -158,7 +153,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
           )
         : null;
 
-      sendResponse({
+      return Promise.resolve({
         type: MESSAGE_TYPES.CHECK_ROUTES_RESPONSE,
         body: {
           optionErrors: window.optionErrors,
@@ -167,12 +162,10 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
           interpolatedVariables,
         },
       });
-      break;
     case MESSAGE_TYPES.DOWNLOAD:
-      Messaging.handleDownloadMessage(request, sender, sendResponse);
-      break;
+      return Messaging.handleDownloadMessage(request, sender);
     default:
-      break; // noop
+      return Promise.resolve();
   }
 });
 
