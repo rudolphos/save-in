@@ -61,44 +61,45 @@ const Messaging = {
    *   browser.runtime.sendMessage("{72d92df5-2aa0-4b06-b807-aa21767545cd}", payload);
    * }
    */
-handleDownloadMessage: (request, sender) => {
-  const { url, info, comment } = request.body;
-  const last = window.lastDownloadState || {
-    path: new Path.Path("."),
-    scratch: {},
-    info: {},
-  };
+  handleDownloadMessage: (request, sender) => {
+    const { url, info, comment } = request.body;
+    const last = window.lastDownloadState || {
+      path: new Path.Path("."),
+      scratch: {},
+      info: {},
+    };
 
-  const opts = {
-    currentTab, // Global
-    now: new Date(),
-    pageUrl: info.pageUrl,
-    selectionText: info.selectionText,
-    sourceUrl: info.srcUrl,
-    url,
-    context: DOWNLOAD_TYPES.CLICK,
-  };
+    const opts = {
+      currentTab, // Global
+      now: new Date(),
+      pageUrl: info.pageUrl,
+      selectionText: info.selectionText,
+      sourceUrl: info.srcUrl,
+      url,
+      context: DOWNLOAD_TYPES.CLICK,
+    };
 
-  // Useful for passing in from external extensions
-  if (comment) {
-    opts.comment = comment;
-  }
+    // Useful for passing in from external extensions
+    if (comment) {
+      opts.comment = comment;
+    }
 
-  const clickState = {
-    path: last.path || new Path.Path("."),
-    scratch: last.scratch,
-    route: last.route,
-    info: Object.assign({}, last.info, opts, info),
-  };
+    const clickState = {
+      path: last.path || new Path.Path("."),
+      scratch: last.scratch,
+      route: last.route,
+      info: Object.assign({}, last.info, opts, info),
+    };
 
-  requestedDownloadFlag = true;
-  Download.renameAndDownload(clickState);
+    requestedDownloadFlag = true;
+    Download.renameAndDownload(clickState);
 
-  return Promise.resolve({
-    type: MESSAGE_TYPES.DOWNLOAD,
-    body: { status: MESSAGE_TYPES.OK },
-  });
-},
+    return Promise.resolve({
+      type: MESSAGE_TYPES.DOWNLOAD,
+      body: { status: MESSAGE_TYPES.OK },
+    });
+  },
+};
 
 browser.runtime.onMessageExternal.addListener(
   (request, sender) => {
