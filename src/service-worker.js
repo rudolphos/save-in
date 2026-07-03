@@ -22,14 +22,14 @@ importScripts(
   "src/index.js"
 );
 
-// Rehydrate persisted state on startup (optional, if needed by background scripts)
+// Initialize service worker: load options from storage before anything else
+// This ensures options are available when event handlers fire
 (async function initServiceWorker() {
   try {
-    const stored = await browser.storage.local.get();
-    if (stored.globalChromeState && typeof globalChromeState !== "undefined") {
-      Object.assign(globalChromeState, stored.globalChromeState);
-    }
+    console.log("Service worker starting up, loading options...");
+    await OptionsManagement.loadOptions();
+    console.log("Options loaded successfully");
   } catch (e) {
-    console.warn("service-worker init: could not rehydrate state", e);
+    console.warn("service-worker init: failed to load options", e);
   }
 })();
