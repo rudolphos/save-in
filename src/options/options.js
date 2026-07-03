@@ -202,8 +202,10 @@ const saveOptions = (e) => {
     }, {});
 
     browser.storage.local.set(toSave).then(() => {
-      browser.runtime.getBackgroundPage().then((w) => {
-        w.reset();
+      // MV3: send message to service worker instead of getBackgroundPage
+      browser.runtime.sendMessage({ type: "RESET" }).catch(() => {
+        // Service worker might not be ready, reload page to pick up new options
+        window.location.reload();
       });
 
       document.querySelector("#lastSavedAt").textContent =
@@ -284,11 +286,8 @@ document.querySelector("#reset").addEventListener("click", (e) => {
   };
   /* eslint-enable no-alert */
 
-  if (CURRENT_BROWSER === BROWSERS.CHROME) {
-    browser.runtime.getBackgroundPage().then(resetFn);
-  } else {
-    resetFn(window);
-  }
+  // MV3: just call resetFn with window (no getBackgroundPage)
+  resetFn(window);
 });
 
 const setupChromeDisables = () => {
@@ -369,8 +368,15 @@ const importSettings = () => {
       try {
         if (json) {
           const settings = JSON.parse(json);
-          restoreOptionsHandler(settings, schema);
-          w.alert("Settings loaded.");
+          // Save to storage and notify service worker
+          browser.storage.local.set(settings).then(() => {
+            restoreOptionsHandler(settings, schema);
+            w.alert("Settings loaded.");
+            // Notify service worker to reload
+            browser.runtime.sendMessage({ type: "RESET" }).catch(() => {
+              // Ignore if service worker not ready
+            });
+          });
         }
       } catch (e) {
         w.alert(`Failed to load settings ${e}`);
@@ -378,11 +384,7 @@ const importSettings = () => {
     });
   };
 
-  if (CURRENT_BROWSER === BROWSERS.CHROME) {
-    browser.runtime.getBackgroundPage().then(load);
-  } else {
-    load(window);
-  }
+  load(window);
 };
 document
   .querySelector("#settings-import")
