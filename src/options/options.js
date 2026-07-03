@@ -202,11 +202,7 @@ const saveOptions = (e) => {
     }, {});
 
     browser.storage.local.set(toSave).then(() => {
-      // MV3: send message to service worker instead of getBackgroundPage
-      browser.runtime.sendMessage({ type: "RESET" }).catch(() => {
-        // Service worker might not be ready, reload page to pick up new options
-        window.location.reload();
-      });
+      browser.runtime.sendMessage({ type: "RESET" });
 
       document.querySelector("#lastSavedAt").textContent =
         new Date().toLocaleTimeString();
@@ -286,11 +282,10 @@ document.querySelector("#reset").addEventListener("click", (e) => {
   };
   /* eslint-enable no-alert */
 
-  // MV3: just call resetFn with window (no getBackgroundPage)
   resetFn(window);
 });
 
-const setupChromeDisables = () => {
+function setupChromeDisables() {
   if (CURRENT_BROWSER === BROWSERS.CHROME) {
     document.querySelectorAll(".chrome-only").forEach((el) => {
       el.classList.toggle("show");
@@ -368,15 +363,8 @@ const importSettings = () => {
       try {
         if (json) {
           const settings = JSON.parse(json);
-          // Save to storage and notify service worker
-          browser.storage.local.set(settings).then(() => {
-            restoreOptionsHandler(settings, schema);
-            w.alert("Settings loaded.");
-            // Notify service worker to reload
-            browser.runtime.sendMessage({ type: "RESET" }).catch(() => {
-              // Ignore if service worker not ready
-            });
-          });
+          restoreOptionsHandler(settings, schema);
+          w.alert("Settings loaded.");
         }
       } catch (e) {
         w.alert(`Failed to load settings ${e}`);
