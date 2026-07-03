@@ -1,6 +1,6 @@
 // src/service-worker.js
 // MV3 service worker entry point.
-// Imports existing background scripts in the same order as MV2.
+// Imports existing background scripts in dependency order (constants first, init last).
 // Service worker lifecycle is event-driven; state persists in chrome.storage.
 
 importScripts(
@@ -14,11 +14,11 @@ importScripts(
   "src/download.js",
   "src/router.js",
   "src/shortcut.js",
-  "src/messaging.js",
-  "src/headers.js",
   "src/variable.js",
+  "src/headers.js",
   "src/menu.js",
   "src/option.js",
+  "src/messaging.js",
   "src/index.js"
 );
 
