@@ -27,6 +27,20 @@ const Headers = {
   },
 
   addRequestListener: () => {
+    // In Manifest V3, dynamic header mutation via webRequest.onBeforeSendHeaders is not allowed
+    // for regular extensions. Detect MV3 and disable this feature.
+    try {
+      const manifest = chrome.runtime.getManifest && chrome.runtime.getManifest();
+      if (manifest && manifest.manifest_version === 3) {
+        // MV3: skip blocking listener registration. Dynamic Referer injection is disabled.
+        return;
+      }
+    } catch (e) {
+      // If detection fails, be conservative and return (no-op).
+      return;
+    }
+
+    // MV2 logic: remove any existing listener and re-add if enabled
     browser.webRequest.onBeforeSendHeaders.removeListener(
       Headers.refererListener
     );
