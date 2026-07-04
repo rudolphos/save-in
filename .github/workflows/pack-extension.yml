@@ -1,4 +1,4 @@
-name: Pack Chromium Extension
+name: Pack Chromium extension archive
 
 on:
   workflow_dispatch:
@@ -24,26 +24,17 @@ jobs:
         run: |
           mkdir -p dist
           
-          # Zip the production files while dropping testing, linting, and metadata configs
-          zip -r "dist/extension-v${{ env.VERSION }}.zip" . \
-            -x "*.git*" \
-            -x "*.github*" \
-            -x "dist/*" \
-            -x "test/*" \
-            -x "docs/*" \
-            -x ".eslintignore" \
-            -x ".eslintrc" \
-            -x ".gitattributes" \
-            -x ".gitignore" \
-            -x "CHANGELOG.md" \
-            -x "LICENSE" \
-            -x "README.md" \
-            -x "package.json" \
-            -x "yarn.lock"
+          # Zip only production files directly into the root of the archive
+          zip -r "dist/extension-v${{ env.VERSION }}.zip" \
+            manifest.json \
+            background-wrapper.js \
+            src \
+            icons \
+            _locales
             
       - name: Upload zip artifact
         uses: actions/upload-artifact@v4
         with:
-          name: extension-v${{ env.VERSION }}
+          name: SaveIn-extension-v${{ env.VERSION }}
           path: dist/extension-v${{ env.VERSION }}.zip
           retention-days: 14
