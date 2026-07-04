@@ -1,0 +1,49 @@
+name: Pack Chromium Extension
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get version from manifest
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./manifest.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Pack extension archive
+        run: |
+          mkdir -p dist
+          
+          # Zip the production files while dropping testing, linting, and metadata configs
+          zip -r "dist/extension-v${{ env.VERSION }}.zip" . \
+            -x "*.git*" \
+            -x "*.github*" \
+            -x "dist/*" \
+            -x "test/*" \
+            -x "docs/*" \
+            -x ".eslintignore" \
+            -x ".eslintrc" \
+            -x ".gitattributes" \
+            -x ".gitignore" \
+            -x "CHANGELOG.md" \
+            -x "LICENSE" \
+            -x "README.md" \
+            -x "package.json" \
+            -x "yarn.lock"
+            
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-v${{ env.VERSION }}
+          path: dist/extension-v${{ env.VERSION }}.zip
+          retention-days: 14
