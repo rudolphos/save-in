@@ -20,22 +20,15 @@ jobs:
           VERSION=$(node -p "require('./manifest.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Pack extension archive
-        run: |
-          mkdir -p dist
-          
-          # Zip only production files directly into the root of the archive
-          zip -r "dist/extension-v${{ env.VERSION }}.zip" \
-            manifest.json \
-            background-wrapper.js \
-            src \
-            icons \
-            _locales
-            
       - name: Upload zip artifact
         uses: actions/upload-artifact@v4
         with:
           name: SaveIn-extension-v${{ env.VERSION }}
-          # Target the folder containing the file, not the file itself
-          path: dist/
+          # List the files and directories to include directly
+          path: |
+            manifest.json
+            background-wrapper.js
+            src/
+            icons/
+            _locales/
           retention-days: 14
