@@ -4,11 +4,11 @@
 - fix settings persistence
 - change copy/paste settings import/export to a file-based method
 
-# 3.7.4
+# 3.7.4 (MV3)
  
 - MV3 support: fix click-to-save (alt+click) and fetch-via-content by injecting the content script
 
-# 3.7.3
+# 3.7.3 (MV2)
 
 - Firefox settings no longer disabled on the options page when in Firefox (#214)
 
