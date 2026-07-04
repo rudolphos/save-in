@@ -28,7 +28,7 @@ const Messaging = {
               })
               .then(resolve)
               .catch((err) => {
-                if (window.SI_DEBUG) {
+                if (self.SI_DEBUG) {
                   console.log(err); // eslint-disable-line
                 }
                 reject(err);
@@ -61,9 +61,9 @@ const Messaging = {
    *   browser.runtime.sendMessage("{72d92df5-2aa0-4b06-b807-aa21767545cd}", payload);
    * }
    */
-  handleDownloadMessage: (request, sender) => {
+  handleDownloadMessage: (request, sender, sendResponse) => {
     const { url, info, comment } = request.body;
-    const last = window.lastDownloadState || {
+    const last = self.lastDownloadState || {
       path: new Path.Path("."),
       scratch: {},
       info: {},
@@ -94,7 +94,7 @@ const Messaging = {
     requestedDownloadFlag = true;
     Download.renameAndDownload(clickState);
 
-    return Promise.resolve({
+    sendResponse({
       type: MESSAGE_TYPES.DOWNLOAD,
       body: { status: MESSAGE_TYPES.OK },
     });
@@ -102,43 +102,53 @@ const Messaging = {
 };
 
 browser.runtime.onMessageExternal.addListener(
-  (request, sender) => {
+  (request, sender, sendResponse) => {
     switch (request.type) {
       case MESSAGE_TYPES.DOWNLOAD:
-        return Messaging.handleDownloadMessage(request, sender);
+        Messaging.handleDownloadMessage(request, sender, sendResponse);
+        break;
       default:
-        return Promise.resolve();
+        // noop
+        break;
     }
   }
 );
 
-browser.runtime.onMessage.addListener((request, sender) => {
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.type) {
+    case "RESET":
+      if (self.reset) {
+        self.reset();
+      }
+      break;
     case MESSAGE_TYPES.OPTIONS:
-      return Promise.resolve({
+      sendResponse({
         type: MESSAGE_TYPES.OPTIONS,
         body: options,
       });
+      break;
     case MESSAGE_TYPES.OPTIONS_SCHEMA:
-      return Promise.resolve({
+      sendResponse({
         type: MESSAGE_TYPES.OPTIONS_SCHEMA,
         body: {
           keys: OptionsManagement.OPTION_KEYS,
           types: OptionsManagement.OPTION_TYPES,
         },
       });
+      break;
     case MESSAGE_TYPES.GET_KEYWORDS:
-      return Promise.resolve({
+      sendResponse({
         type: MESSAGE_TYPES.KEYWORD_LIST,
         body: {
           matchers: Object.keys(Router.matcherFunctions),
           variables: Object.keys(Variable.transformers),
         },
       });
+      break;
     case MESSAGE_TYPES.CHECK_ROUTES:
       const lastState =
         (request.body && request.body.state) ||
-        (window.lastDownloadState != null && window.lastDownloadState);
+        (self.lastDownloadState != null && self.lastDownloadState);
 
       const interpolatedVariables = lastState
         ? Object.keys(Variable.transformers).reduce(
@@ -153,19 +163,21 @@ browser.runtime.onMessage.addListener((request, sender) => {
           )
         : null;
 
-      return Promise.resolve({
+      sendResponse({
         type: MESSAGE_TYPES.CHECK_ROUTES_RESPONSE,
         body: {
-          optionErrors: window.optionErrors,
+          optionErrors: self.optionErrors,
           routeInfo: OptionsManagement.checkRoutes(lastState),
-          lastDownload: window.lastDownloadState,
+          lastDownload: self.lastDownloadState,
           interpolatedVariables,
         },
       });
+      break;
     case MESSAGE_TYPES.DOWNLOAD:
-      return Messaging.handleDownloadMessage(request, sender);
+      Messaging.handleDownloadMessage(request, sender, sendResponse);
+      break;
     default:
-      return Promise.resolve();
+      break; // noop
   }
 });
 

@@ -1,3 +1,7 @@
+# 3.7.4
+ 
+- MV3 support: fix click-to-save (alt+click) and fetch-via-content by injecting the content script
+
 # 3.7.3
 
 - Firefox settings no longer disabled on the options page when in Firefox (#214)

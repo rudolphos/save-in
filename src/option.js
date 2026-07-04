@@ -101,19 +101,8 @@ const OptionsManagement = {
       };
     }
 
-    // webext linter does not support spread
-    // const last = {
-    //   ...state,
-    //   info: {
-    //     ...state.info,
-    //     filenamePatterns: options.filenamePatterns
-    //   }
-    // };
-
     const newInfo = Object.assign({}, state.info, {
       filenamePatterns: options.filenamePatterns,
-      // Chrome hack for filename: Chrome replaces special characters with `_`
-      // This mutates(?) the last object and ruins it
       filename: state.info.initialFilename || state.info.filename,
     });
     const last = Object.assign({}, state, { info: newInfo });
@@ -149,7 +138,7 @@ OptionsManagement.loadOptions = () =>
     .get(OptionsManagement.getKeys())
     .then((loadedOptions) => {
       if (loadedOptions.debug) {
-        window.SI_DEBUG = 1;
+        self.SI_DEBUG = 1;
       }
 
       const localKeys = Object.keys(loadedOptions);

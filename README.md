@@ -1,36 +1,21 @@
 # save-in
 
-[Firefox Addons](https://addons.mozilla.org/en-US/firefox/addon/save-in)<br />
-[Chrome Web Store](https://chrome.google.com/webstore/detail/save-in%E2%80%A6/jpblofcpgfjikaapfedldfeilmpgkedf)<br />
-[Releases](https://github.com/gyng/save-in/releases/)
+[Firefox Addons](https://addons.mozilla.org/en-US/firefox/addon/save-in) | [Chrome Web Store](https://chrome.google.com/webstore/detail/save-in%E2%80%A6/jpblofcpgfjikaapfedldfeilmpgkedf) | [Releases (MV2)](https://github.com/gyng/save-in/releases/)
 
 ![Screenshot](docs/screenshot.png)
 
-A web extension for Firefox and Chrome.
+A web extension to save media (image, video, audio, link, selection, page) via context menu into user-defined directories relative to the default download location. Supports dynamic naming, rules-based routing/renaming, and shortcut creation (.url, .desktop, .html).
 
-Adds a context menu to save media {image, video, audio, link, selection, page} in user-defined folders or directories relative to the default download location.
+### Path Configuration (Symlinks)
+WebExtension APIs limit saves to the default download folder. Bypass this using symlinks:
+* **Linux/Mac:** `ln -s /path/to/actual /default_download_dir/symlink`
+* **Windows:** `mklink /d \default_download_dir\symlink \path\to\actual`
+* *Note: Make sure the actual directories exist, or downloads will silently fail.*
 
-Save into dynamically named directories.
-
-Flexible rules-based download renaming and routing.
-
-Option to save as shortcuts {.url, .desktop, .html redirect}.
-
-The WebExtension API only allows saving into directories relative to the default download directory. Symlinks can be used to get around this limitation:
-
-Linux/Mac:
-
-    ln -s /path/to/actual /default_download_dir/symlink
-
-Windows:
-
-    mklink /d \default_download_dir\symlink \path\to\actual
-
-Make sure the actual directories exist, or downloads will silently fail.
-
-* <all_urls> permission is used to get around CORS on HTTP HEAD requests (to check for Content-Disposition headers)
-* tabs permission is used to get the active page's title.
-* webRequest permissions are required to inject the Referer header on downloads (disabled by default)
+### Permissions
+* `<all_urls>`: Bypasses CORS for HTTP HEAD requests (checking Content-Disposition).
+* `tabs`: Accesses active page titles.
+* `webRequest`: Injects Referer headers (disabled by default).
 
 Configure before use.
 

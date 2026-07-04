@@ -202,9 +202,7 @@ const saveOptions = (e) => {
     }, {});
 
     browser.storage.local.set(toSave).then(() => {
-      browser.runtime.getBackgroundPage().then((w) => {
-        w.reset();
-      });
+      browser.runtime.sendMessage({ type: "RESET" });
 
       document.querySelector("#lastSavedAt").textContent =
         new Date().toLocaleTimeString();
@@ -284,14 +282,10 @@ document.querySelector("#reset").addEventListener("click", (e) => {
   };
   /* eslint-enable no-alert */
 
-  if (CURRENT_BROWSER === BROWSERS.CHROME) {
-    browser.runtime.getBackgroundPage().then(resetFn);
-  } else {
-    resetFn(window);
-  }
+  resetFn(window);
 });
 
-const setupChromeDisables = () => {
+function setupChromeDisables() {
   if (CURRENT_BROWSER === BROWSERS.CHROME) {
     document.querySelectorAll(".chrome-only").forEach((el) => {
       el.classList.toggle("show");
@@ -378,11 +372,7 @@ const importSettings = () => {
     });
   };
 
-  if (CURRENT_BROWSER === BROWSERS.CHROME) {
-    browser.runtime.getBackgroundPage().then(load);
-  } else {
-    load(window);
-  }
+  load(window);
 };
 document
   .querySelector("#settings-import")

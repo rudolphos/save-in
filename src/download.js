@@ -7,12 +7,8 @@ const Download = {
     /filename[^;=\n]*=((['"])(.*)?\2|(.+'')?([^;\n]*))/i,
   EXTENSION_REGEX: /\.([0-9a-z]{1,8})$/i,
 
-  makeObjectUrl: (content, mime = "text/plain") =>
-    URL.createObjectURL(
-      new Blob([content], {
-        type: `${mime};charset=utf-8`,
-      })
-    ),
+  makeObjectUrl: (content, mime = "text/plain") => 
+    `data:${mime};charset=utf-8,${encodeURIComponent(content)}`,
 
   getFilenameFromUrl: (url) => {
     const remotePath = new URL(url).pathname;
@@ -87,7 +83,7 @@ const Download = {
     const download = (_state) => {
       const finalFullPath = Download.finalizeFullPath(_state);
 
-      if (window.SI_DEBUG) {
+      if (self.SI_DEBUG) {
         console.log(state, finalFullPath); // eslint-disable-line
       }
 
@@ -116,30 +112,39 @@ const Download = {
         });
       };
 
+      // Helper to convert Blob to Data URI in a Service Worker
+      const blobToDataUrl = async (blob) => {
+        const buffer = await blob.arrayBuffer();
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        // Process in chunks to avoid Maximum Call Stack Size Exceeded for large files
+        const chunkSize = 0x8000; 
+        for (let i = 0; i < len; i += chunkSize) {
+          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+        }
+        return `data:${blob.type || 'application/octet-stream'};base64,${btoa(binary)}`;
+      };
+
       const fetchDownload = (_url) => {
         fetch(_url)
           .then((response) => response.blob())
-          .then((myBlob) => {
-            const objectURL = URL.createObjectURL(myBlob);
-            browser.downloads.download({
-              url: objectURL,
-              filename: finalFullPath || "_",
-              saveAs: prompt,
-              conflictAction: options.conflictAction,
-            });
+          .then(async (myBlob) => {
+            const dataUrl = await blobToDataUrl(myBlob);
+            browserDownload(dataUrl);
           });
       };
 
       if (options.fetchViaContent) {
         Messaging.send
           .fetchViaContent(_state)
-          .then((res) => {
-            // Object URL has to be created inside the background script
-            const objectUrl = URL.createObjectURL(res.body.blob);
-            return browserDownload(objectUrl);
+          .then(async (res) => {
+            // Object URL cannot be created in SW. Convert Blob to Data URI instead.
+            const dataUrl = await blobToDataUrl(res.body.blob);
+            return browserDownload(dataUrl);
           })
           .catch((e) => {
-            if (window.SI_DEBUG) {
+            if (self.SI_DEBUG) {
               console.log("Failed to fetch via content", e); // eslint-disable-line
             }
             browserDownload(_state.info.url);
@@ -151,7 +156,8 @@ const Download = {
       }
 
       Messaging.emit.downloaded(_state);
-      window.lastDownloadState = _state;
+      self.lastDownloadState = _state;
+      browser.storage.local.set({ lastDownloadState: _state }); // Add this line
       SaveHistory.add({
         timestamp: new Date().toISOString(),
         url: _state.info.url,
