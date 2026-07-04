@@ -2,7 +2,6 @@ try {
   importScripts(
     "src/vendor/browser-polyfill.js",
     "src/vendor/content-disposition.js",
-    "src/chrome-detector.js",
     "src/constants.js",
     "src/history.js",
     "src/notification.js",

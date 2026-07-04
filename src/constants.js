@@ -1,4 +1,15 @@
-/* eslint-disable no-unused-vars */
+const BROWSERS = {
+  CHROME: "CHROME",
+  FIREFOX: "FIREFOX",
+  UNKNOWN: "UNKNOWN",
+};
+
+const CURRENT_BROWSER = BROWSERS.CHROME;
+const CURRENT_BROWSER_VERSION = 120;
+const BROWSER_FEATURES = {
+  multitab: false,
+  accessKeys: true,
+};
 
 const MEDIA_TYPES = ["image", "video", "audio"];
 

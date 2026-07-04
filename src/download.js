@@ -7,7 +7,7 @@ const Download = {
     /filename[^;=\n]*=((['"])(.*)?\2|(.+'')?([^;\n]*))/i,
   EXTENSION_REGEX: /\.([0-9a-z]{1,8})$/i,
 
-  makeObjectUrl: (content, mime = "text/plain") => 
+  makeObjectUrl: (content, mime = "text/plain") =>
     `data:${mime};charset=utf-8,${encodeURIComponent(content)}`,
 
   getFilenameFromUrl: (url) => {
@@ -115,15 +115,20 @@ const Download = {
       // Helper to convert Blob to Data URI in a Service Worker
       const blobToDataUrl = async (blob) => {
         const buffer = await blob.arrayBuffer();
-        let binary = '';
+        let binary = "";
         const bytes = new Uint8Array(buffer);
         const len = bytes.byteLength;
         // Process in chunks to avoid Maximum Call Stack Size Exceeded for large files
-        const chunkSize = 0x8000; 
+        const chunkSize = 0x8000;
         for (let i = 0; i < len; i += chunkSize) {
-          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+          binary += String.fromCharCode.apply(
+            null,
+            bytes.subarray(i, i + chunkSize)
+          );
         }
-        return `data:${blob.type || 'application/octet-stream'};base64,${btoa(binary)}`;
+        return `data:${blob.type || "application/octet-stream"};base64,${btoa(
+          binary
+        )}`;
       };
 
       const fetchDownload = (_url) => {

@@ -6,14 +6,7 @@ const getOptionsSchema = browser.runtime
   })
   .catch(console.error);
 
-const waitForBrowserDetection = () => {
-  if (CURRENT_BROWSER === "UNKNOWN") {
-    setTimeout(waitForBrowserDetection, 10);
-  } else {
-    setupChromeDisables();
-  }
-};
-waitForBrowserDetection();
+setupChromeDisables();
 
 const updateErrors = () => {
   const pathsErrors = document.querySelector("#error-paths");
@@ -178,36 +171,34 @@ browser.runtime.onMessage.addListener((message) => {
   }
 });
 
-const saveOptions = (e) => {
+const saveOptions = async (e) => {
   if (e) {
     e.preventDefault();
   }
 
   // Zip result -> schema
-  getOptionsSchema.then((schema) => {
-    const toSave = schema.keys.reduce((acc, val) => {
-      const el = document.getElementById(val.name);
-      if (!el) {
-        return acc;
-      }
+  const schema = await getOptionsSchema;
+  const toSave = schema.keys.reduce((acc, val) => {
+    const el = document.getElementById(val.name);
+    if (!el) {
+      return acc;
+    }
 
-      const propMap = {
-        [schema.types.BOOL]: "checked",
-        [schema.types.VALUE]: "value",
-      };
-      const fn = val.onSave || ((x) => x);
-      const optionValue = fn(el[propMap[val.type]]);
+    const propMap = {
+      [schema.types.BOOL]: "checked",
+      [schema.types.VALUE]: "value",
+    };
+    const fn = val.onSave || ((x) => x);
+    const optionValue = fn(el[propMap[val.type]]);
 
-      return Object.assign(acc, { [val.name]: optionValue });
-    }, {});
+    return Object.assign(acc, { [val.name]: optionValue });
+  }, {});
 
-    browser.storage.local.set(toSave).then(() => {
-      browser.runtime.sendMessage({ type: "RESET" });
+  await browser.storage.local.set(toSave);
+  browser.runtime.sendMessage({ type: "RESET" });
 
-      document.querySelector("#lastSavedAt").textContent =
-        new Date().toLocaleTimeString();
-    });
-  });
+  document.querySelector("#lastSavedAt").textContent =
+    new Date().toLocaleTimeString();
 };
 
 // Set UI elements' value/checked
@@ -236,13 +227,12 @@ const restoreOptionsHandler = (result, schema) => {
   updateErrors();
 };
 
-const restoreOptions = () =>
-  getOptionsSchema.then((schema) => {
-    const keys = schema.keys.map((o) => o.name);
-    browser.storage.local
-      .get(keys)
-      .then((loaded) => restoreOptionsHandler(loaded, schema));
-  });
+const restoreOptions = async () => {
+  const schema = await getOptionsSchema;
+  const keys = schema.keys.map((o) => o.name);
+  const loaded = await browser.storage.local.get(keys);
+  restoreOptionsHandler(loaded, schema);
+};
 
 const addHelp = (el) => {
   el.addEventListener("click", (e) => {
@@ -302,7 +292,7 @@ function setupChromeDisables() {
       el.disabled = true;
     });
   }
-};
+}
 
 const setupAutosave = (el) => {
   const autosaveCb = (e) => {
@@ -342,38 +332,53 @@ document.querySelectorAll(".popout").forEach((el) => {
   });
 });
 
-const showJson = (obj) => {
+const downloadJson = (obj) => {
   const json = JSON.stringify(obj, null, 2);
-  const outputEl = document.querySelector("#export-target");
-  outputEl.style = "display: unset;";
-  outputEl.value = json;
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const date = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const filename = `SaveInConfig-${date}.json`;
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+
+  URL.revokeObjectURL(url);
 };
 
 document.querySelector("#settings-export").addEventListener("click", () => {
   getOptionsSchema.then((schema) => {
     const keys = schema.keys.map((o) => o.name);
-    browser.storage.local.get(keys).then((loaded) => showJson(loaded));
+    browser.storage.local.get(keys).then((loaded) => downloadJson(loaded));
   });
 });
 
-const importSettings = () => {
-  const load = (w) => {
-    getOptionsSchema.then((schema) => {
-      const json = w.prompt("Paste settings to import");
-      try {
-        if (json) {
-          const settings = JSON.parse(json);
-          restoreOptionsHandler(settings, schema);
-          w.alert("Settings loaded.");
-        }
-      } catch (e) {
-        w.alert(`Failed to load settings ${e}`);
-      }
-    });
-  };
+document.querySelector("#settings-import").addEventListener("click", () => {
+  document.querySelector("#settings-file-input").click();
+});
 
-  load(window);
-};
 document
-  .querySelector("#settings-import")
-  .addEventListener("click", importSettings);
+  .querySelector("#settings-file-input")
+  .addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      getOptionsSchema.then((schema) => {
+        try {
+          const settings = JSON.parse(event.target.result);
+          restoreOptionsHandler(settings, schema);
+          saveOptions();
+          window.alert("Settings successfully imported.");
+        } catch (err) {
+          window.alert(`Failed to load settings ${err}`);
+        }
+      });
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });

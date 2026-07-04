@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <script type="application/javascript" src="../vendor/browser-polyfill.js"></script>
   <script type="application/javascript" src="./vendor/l10n/l10n.js"></script>
-  <script type="application/javascript" src="../chrome-detector.js"></script>
+  <script type="application/javascript" src="../constants.js"></script>
   <title>Settings &mdash; Save In</title>
   <link href="style.css" rel="stylesheet" />
   <link rel="icon" type="image/png" href="./favicon.png" />
@@ -13,8 +13,6 @@
 
 <body id="settings-page">
   <div>
-    <a class="open-settings-in-window" href="options.html" target="_blank">__MSG_o_lPopout__</a>
-    &middot;
     <a href="variablelist.html" target="_blank">__MSG_o_lVariableList__</a>
     &middot;
     <a href="clauselist.html" target="_blank">__MSG_o_lClauseList__</a>
@@ -585,9 +583,8 @@ into: <span class="demo g4">:$2:</span>/<span class="demo g2">:$1:</span>.<span 
       <div style="margin-left: 8px;" id="settings-export" class="button">
         __MSG_o_cExportSettings__
       </div>
+      <input type="file" id="settings-file-input" accept=".json,.txt" style="display: none;" />
     </div>
-
-    <textarea id="export-target" style="display: none;" spellcheck="false"></textarea>
 
     <label> <input type="checkbox" id="debug" /> __MSG_o_cDebugMode__ </label>
 
