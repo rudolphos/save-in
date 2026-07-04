@@ -36,5 +36,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SaveIn-extension-v${{ env.VERSION }}
-          path: dist/extension-v${{ env.VERSION }}.zip
+          # Target the folder containing the file, not the file itself
+          path: dist/
           retention-days: 14
