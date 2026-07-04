@@ -4,37 +4,13 @@ const Messaging = {
   // Fires off and does not expect a return value
   emit: {
     downloaded: (state) => {
-      browser.runtime.sendMessage({
-        type: MESSAGE_TYPES.DOWNLOADED,
-        body: { state },
-      });
+      browser.runtime
+        .sendMessage({
+          type: MESSAGE_TYPES.DOWNLOADED,
+          body: { state },
+        })
+        .catch(() => {});
     },
-  },
-
-  // Returns a Promise
-  send: {
-    fetchViaContent: (state) =>
-      new Promise((resolve, reject) => {
-        browser.tabs
-          .query({
-            currentWindow: true,
-            active: true,
-          })
-          .then((tabs) => {
-            browser.tabs
-              .sendMessage(tabs[0].id, {
-                type: MESSAGE_TYPES.FETCH_VIA_CONTENT,
-                body: { state },
-              })
-              .then(resolve)
-              .catch((err) => {
-                if (self.SI_DEBUG) {
-                  console.log(err); // eslint-disable-line
-                }
-                reject(err);
-              });
-          });
-      }),
   },
 
   /**
@@ -63,11 +39,6 @@ const Messaging = {
    */
   handleDownloadMessage: (request, sender, sendResponse) => {
     const { url, info, comment } = request.body;
-    const last = self.lastDownloadState || {
-      path: new Path.Path("."),
-      scratch: {},
-      info: {},
-    };
 
     const opts = {
       currentTab, // Global
@@ -85,10 +56,9 @@ const Messaging = {
     }
 
     const clickState = {
-      path: last.path || new Path.Path("."),
-      scratch: last.scratch,
-      route: last.route,
-      info: Object.assign({}, last.info, opts, info),
+      path: new Path.Path("."),
+      scratch: {},
+      info: opts,
     };
 
     requestedDownloadFlag = true;
@@ -146,19 +116,17 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
       break;
     case MESSAGE_TYPES.CHECK_ROUTES:
-      const lastState =
-        (request.body && request.body.state) ||
-        (self.lastDownloadState != null && self.lastDownloadState);
+      const lastState = request.body?.state ?? self.lastDownloadState;
 
       const interpolatedVariables = lastState
         ? Object.keys(Variable.transformers).reduce(
-            (acc, val) =>
-              Object.assign(acc, {
-                [val]: Variable.applyVariables(
-                  new Path.Path(val),
-                  lastState.info
-                ).finalize(),
-              }),
+            (acc, val) => ({
+              ...acc,
+              [val]: Variable.applyVariables(
+                new Path.Path(val),
+                lastState.info
+              ).finalize(),
+            }),
             {}
           )
         : null;

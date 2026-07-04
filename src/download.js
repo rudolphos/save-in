@@ -36,7 +36,7 @@ const Download = {
       getFilenameFromContentDispositionHeader(disposition);
 
     if (filenameFromLib) {
-      return decodeURIComponent(decodeURIComponent(filenameFromLib));
+      return decodeURIComponent(filenameFromLib);
     }
 
     return null;
@@ -56,11 +56,12 @@ const Download = {
     const initialFilename =
       state.info.suggestedFilename || naiveFilename || state.info.url;
 
-    Object.assign(state.info, {
+    state.info = {
+      ...state.info,
       naiveFilename,
       filename: initialFilename,
       initialFilename,
-    });
+    };
 
     state.path = Variable.applyVariables(state.path, state.info);
     // FIXME: Fix router params for new path struct
@@ -103,66 +104,40 @@ const Download = {
         shiftHeldPrompt ||
         noRuleMatchedPrompt;
 
-      const browserDownload = (_url) => {
-        browser.downloads.download({
-          url: _url,
-          filename: finalFullPath || "_",
-          saveAs: prompt,
-          conflictAction: options.conflictAction,
-        });
-      };
-
-      // Helper to convert Blob to Data URI in a Service Worker
-      const blobToDataUrl = async (blob) => {
-        const buffer = await blob.arrayBuffer();
-        let binary = "";
-        const bytes = new Uint8Array(buffer);
-        const len = bytes.byteLength;
-        // Process in chunks to avoid Maximum Call Stack Size Exceeded for large files
-        const chunkSize = 0x8000;
-        for (let i = 0; i < len; i += chunkSize) {
-          binary += String.fromCharCode.apply(
-            null,
-            bytes.subarray(i, i + chunkSize)
+      const browserDownload = async (_url) => {
+        // Persist pending flag + final filename before download API call so
+        // onDeterminingFilename / notification tracking survive SW termination
+        await browser.storage.session
+          .set({ siPendingDownload: true, siFinalFilename: finalFullPath })
+          .catch(() => {});
+        try {
+          const downloadId = await browser.downloads.download({
+            url: _url,
+            filename: finalFullPath || "_",
+            saveAs: prompt,
+            conflictAction: options.conflictAction,
+          });
+          const { siTrackedDownloads = [] } = await browser.storage.session.get(
+            "siTrackedDownloads"
           );
+          if (!siTrackedDownloads.includes(downloadId)) {
+            await browser.storage.session.set({
+              siTrackedDownloads: [...siTrackedDownloads, downloadId],
+            });
+          }
+          return downloadId;
+        } finally {
+          await browser.storage.session
+            .set({ siPendingDownload: false })
+            .catch(() => {});
         }
-        return `data:${blob.type || "application/octet-stream"};base64,${btoa(
-          binary
-        )}`;
       };
 
-      const fetchDownload = (_url) => {
-        fetch(_url)
-          .then((response) => response.blob())
-          .then(async (myBlob) => {
-            const dataUrl = await blobToDataUrl(myBlob);
-            browserDownload(dataUrl);
-          });
-      };
-
-      if (options.fetchViaContent) {
-        Messaging.send
-          .fetchViaContent(_state)
-          .then(async (res) => {
-            // Object URL cannot be created in SW. Convert Blob to Data URI instead.
-            const dataUrl = await blobToDataUrl(res.body.blob);
-            return browserDownload(dataUrl);
-          })
-          .catch((e) => {
-            if (self.SI_DEBUG) {
-              console.log("Failed to fetch via content", e); // eslint-disable-line
-            }
-            browserDownload(_state.info.url);
-          });
-      } else if (options.fetchViaFetch) {
-        fetchDownload(_state.info.url);
-      } else {
-        browserDownload(_state.info.url);
-      }
+      browserDownload(_state.info.url);
 
       Messaging.emit.downloaded(_state);
       self.lastDownloadState = _state;
-      browser.storage.local.set({ lastDownloadState: _state }); // Add this line
+      browser.storage.session.set({ lastDownloadState: _state });
       SaveHistory.add({
         timestamp: new Date().toISOString(),
         url: _state.info.url,
@@ -174,8 +149,7 @@ const Download = {
     // Chrome: Skip HEAD request for Content-Disposition and use onDeterminingFilename
     if (
       CURRENT_BROWSER === BROWSERS.CHROME &&
-      chrome.downloads &&
-      chrome.downloads.onDeterminingFilename
+      chrome.downloads?.onDeterminingFilename
     ) {
       globalChromeState = state;
       download(state);
@@ -219,20 +193,34 @@ const Download = {
   },
 };
 
-if (chrome && chrome.downloads && chrome.downloads.onDeterminingFilename) {
+if (chrome.downloads?.onDeterminingFilename) {
   chrome.downloads.onDeterminingFilename.addListener(
-    (downloadItem, suggest) => {
-      globalChromeState.info = globalChromeState.info || {};
-      globalChromeState.info.filename =
-        (globalChromeState.info && globalChromeState.info.suggestedFilename) ||
-        downloadItem.filename ||
-        (globalChromeState.info && globalChromeState.info.filename);
+    async (downloadItem, suggest) => {
+      // globalChromeState is lost if SW restarted between menu click and download;
+      // fall back to session storage in that case
+      if (!globalChromeState || !globalChromeState.path) {
+        const { siFinalFilename } = await browser.storage.session
+          .get("siFinalFilename")
+          .catch(() => ({}));
+        if (
+          siFinalFilename &&
+          browser.runtime?.id === downloadItem.byExtensionId
+        ) {
+          suggest({
+            filename: siFinalFilename,
+            conflictAction: options.conflictAction,
+          });
+          return;
+        }
+      }
 
-      // Don't interfere with other extensions
-      if (
-        browser.runtime &&
-        browser.runtime.id === downloadItem.byExtensionId
-      ) {
+      globalChromeState.info = globalChromeState.info ?? {};
+      globalChromeState.info.filename =
+        globalChromeState.info?.suggestedFilename ??
+        downloadItem.filename ??
+        globalChromeState.info?.filename;
+
+      if (browser.runtime?.id === downloadItem.byExtensionId) {
         suggest({
           filename: Download.finalizeFullPath(globalChromeState),
           conflictAction: options.conflictAction,

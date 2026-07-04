@@ -6,7 +6,7 @@ const Headers = {
     });
 
     if (options.setRefererHeader) {
-      const filterList = options.setRefererHeaderFilter || "";
+      const filterList = options.setRefererHeaderFilter ?? "";
       const urls = filterList
         .split("\n")
         .map((s) => s.trim())

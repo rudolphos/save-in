@@ -1,5 +1,17 @@
 let currentTab = null; // global variable
 
+// Restore currentTab from session storage so tab matchers work after SW restart
+(async () => {
+  try {
+    const result = await browser.storage.session.get("siCurrentTab");
+    if (result.siCurrentTab) {
+      currentTab = result.siCurrentTab;
+    }
+  } catch (e) {
+    // session storage not available or first run
+  }
+})();
+
 self.init = () => {
   // FIXME
   self.optionErrors = {
@@ -8,7 +20,7 @@ self.init = () => {
   };
 
   OptionsManagement.loadOptions()
-    .then(browser.contextMenus.removeAll())
+    .then(() => browser.contextMenus.removeAll())
     .then(() => {
       Headers.addRequestListener();
 
@@ -24,24 +36,24 @@ self.init = () => {
         .map((p) => p.trim())
         .filter((p) => p && p.length > 0);
 
-      let contexts = options.links ? MEDIA_TYPES.concat(["link"]) : MEDIA_TYPES;
-      contexts = options.selection ? contexts.concat(["selection"]) : contexts;
-      contexts = options.page ? contexts.concat(["page"]) : contexts;
-
-      Menus.addTabMenus();
+      let contexts = options.links
+        ? [...MEDIA_TYPES, "link"]
+        : [...MEDIA_TYPES];
+      contexts = options.selection ? [...contexts, "selection"] : contexts;
+      contexts = options.page ? [...contexts, "page"] : contexts;
 
       if (options.routeExclusive) {
         Menus.addRouteExclusive(contexts);
         return;
-      } else {
-        Menus.addRoot(contexts);
       }
+      Menus.addRoot(contexts);
 
       if (options.enableLastLocation) {
         Menus.addLastUsed(contexts);
         Menus.makeSeparator(contexts);
       }
 
+      Menus.buildFilterCache();
       Menus.addPaths(pathsArray, contexts);
       Menus.makeSeparator(contexts);
 
@@ -64,6 +76,7 @@ self.init();
 browser.tabs.onActivated.addListener((info) => {
   browser.tabs.get(info.tabId).then((t) => {
     currentTab = t;
+    browser.storage.session.set({ siCurrentTab: t }).catch(() => {});
   });
 });
 
@@ -71,8 +84,17 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (!currentTab) {
     browser.tabs.get(tabId).then((t) => {
       currentTab = t;
+      browser.storage.session.set({ siCurrentTab: t }).catch(() => {});
     });
   } else if (currentTab.id === tabId && changeInfo.title) {
     currentTab.title = changeInfo.title;
+  }
+});
+
+// Keep service worker alive to ensure reliable message delivery from content script
+chrome.alarms.create("save-in-keepalive", { periodInMinutes: 1 / 3 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "save-in-keepalive") {
+    // No-op: prevents Chrome from terminating the service worker due to idle timeout
   }
 });

@@ -191,7 +191,7 @@ const saveOptions = async (e) => {
     const fn = val.onSave || ((x) => x);
     const optionValue = fn(el[propMap[val.type]]);
 
-    return Object.assign(acc, { [val.name]: optionValue });
+    return { ...acc, [val.name]: optionValue };
   }, {});
 
   await browser.storage.local.set(toSave);
@@ -204,9 +204,10 @@ const saveOptions = async (e) => {
 // Set UI elements' value/checked
 const restoreOptionsHandler = (result, schema) => {
   // Zip result -> schema
-  const schemaWithValues = schema.keys.map((o) =>
-    Object.assign({}, o, { value: result[o.name] })
-  );
+  const schemaWithValues = schema.keys.map((o) => ({
+    ...o,
+    value: result[o.name],
+  }));
 
   schemaWithValues.forEach((o) => {
     const el = document.getElementById(o.name);

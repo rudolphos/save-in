@@ -1,13 +1,10 @@
 const RouterFactory = {
   makeInfoMatcherFactory:
     (propertyName, alternativePropertyName) => (regex) => (info) => {
-      let match = info[propertyName] && info[propertyName].match(regex);
+      let match = info[propertyName]?.match(regex);
 
-      // Hack for sourceUrl, srcUrl
       if (!match && alternativePropertyName) {
-        match =
-          info[alternativePropertyName] &&
-          info[alternativePropertyName].match(regex);
+        match = info[alternativePropertyName]?.match(regex);
       }
 
       if (self.SI_DEBUG && match) {
@@ -18,10 +15,7 @@ const RouterFactory = {
     },
 
   makeTabMatcherFactory: (propertyName) => (regex) => (info) => {
-    const match =
-      currentTab &&
-      currentTab[propertyName] &&
-      currentTab[propertyName].match(regex);
+    const match = currentTab?.[propertyName]?.match(regex);
 
     if (self.SI_DEBUG && match) {
       console.log("matched", match, regex, info); // eslint-disable-line
@@ -32,7 +26,7 @@ const RouterFactory = {
 
   makeHostnameMatcherFactory: (propertyName) => (regex) => (info) => {
     try {
-      const url = new URL(info && info[propertyName]);
+      const url = new URL(info?.[propertyName]);
 
       const hostname = url.hostname;
       const match = hostname.match(regex);
@@ -51,6 +45,8 @@ const RouterFactory = {
     }
   },
 };
+
+const DOUBLE_NEWLINE_REGEX = new RegExp("\\n\\n+", "g");
 
 const Router = {
   matcherFunctions: {
@@ -105,7 +101,7 @@ const Router = {
     filename:
       (regex) =>
       (info, { filename } = {}) => {
-        const fn = (info && info.filename) || filename;
+        const fn = info?.filename ?? filename;
         if (!fn) return false;
 
         const match = fn.match(regex);
@@ -316,7 +312,7 @@ const Router = {
     }
 
     const rules = withoutComments
-      .replace(new RegExp("\\n\\n+", "g"), "\n\n")
+      .replace(DOUBLE_NEWLINE_REGEX, "\n\n")
       .split("\n\n")
       .map(Router.tokenizeLines)
       .map(Router.parseRule)
@@ -344,7 +340,7 @@ const Router = {
           (m) =>
             m.type === RULE_TYPES.MATCHER && m.name === capturedMatcherNames[i]
         );
-        if (captured && captured.matcher && captured.matcher(info)) {
+        if (captured?.matcher?.(info)) {
           capturedAll.push(captured.matcher(info));
         }
       }
